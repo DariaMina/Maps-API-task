@@ -1,15 +1,41 @@
-import pygame, requests, sys, os
+import pygame
+import sys
+import os
+import requests
+import math
 
 
-class MapParams(object):
+class MapParameters(object):
     def __init__(self):
-        self.lat = 36.88
-        self.lon = 50.22
-        self.zoom = 15
-        self.type = "map"
+        self.lat = 36.88  # Широта
+        self.lon = 50.22  # Долгота
+        self.zoom = 15  # Масштаб (изменяется в пределах от 1 до 19)
+        self.type = "map"  # Тип карты
+        self.step = 0.005  # Шаг смещения карты
 
-    def get_ll(self):
+    def get_ll(self):  # Функция возвращает координаты в правильном формате
         return str(self.lon) + "," + str(self.lat)
+
+    def process_key(self, event):  # Функция, которая обрабатывает события клавиатуры
+        # Обработка клавиш для изменения масштаба (классная работа, задача 2)
+        if event.key == pygame.K_PAGEUP and self.zoom < 19:
+            self.zoom += 1
+
+        elif event.key == pygame.K_PAGEDOWN and self.zoom > 1:
+            self.zoom -= 1
+
+        # Обработка клавиш для перемещения центра карты (классная работа, задача 3)
+        elif event.key == pygame.K_LEFT:
+            self.lon -= self.step * math.pow(2, 15 - self.zoom)
+
+        elif event.key == pygame.K_RIGHT:
+            self.lon += self.step * math.pow(2, 15 - self.zoom)
+
+        elif event.key == pygame.K_UP and self.lat < 85:
+            self.lat += self.step * math.pow(2, 15 - self.zoom)
+
+        elif event.key == pygame.K_DOWN and self.lat > -85:
+            self.lat -= self.step * math.pow(2, 15 - self.zoom)
 
 
 # Создание карты
@@ -25,23 +51,35 @@ def load_map(map_pars):
     # Запись полученной картинки в файл
     map_file = "map.png"
 
+    try:
+        with open(map_file, "wb") as file:
+            file.write(response.content)
 
-    with open(map_file, "wb") as file:
-        file.write(response.content)
+    except IOError as exc:
+        print("Ошибочка вышла! Не удалось записать картинку в файл ;(:", exc)
+        sys.exit()
 
     return map_file
 
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((600, 450))
-    map_pars = MapParams()
+    size = 600, 450
+    screen = pygame.display.set_mode(size)
+    pygame.display.set_caption('Maps-API-task')
 
-    while True:
-        event = pygame.event.wait()
+    # Инициализация параматров карты
+    map_pars = MapParameters()
 
-        if event.type == pygame.QUIT:
-            break
+    running = True
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            elif event.type == pygame.KEYUP:  # Если была нажата какая-либо клавиша, она обрабатывается методом класса
+                map_pars.process_key(event)
 
         # Создание файла с картой
         map_file = load_map(map_pars)
@@ -51,7 +89,7 @@ def main():
         pygame.display.flip()
 
     pygame.quit()
-    # Удаоение файла с картинкой (больше не нужна)
+    # Удаление файла с картинкой (больше не нужна)
     os.remove(map_file)
 
 

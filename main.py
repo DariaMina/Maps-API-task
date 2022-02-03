@@ -3,6 +3,8 @@ import sys
 import os
 import requests
 import math
+# Для создания таких предметов интерфейса, как кнопки, текстовые поля и т.п.
+import pygame_gui
 
 
 class MapParameters(object):
@@ -37,6 +39,9 @@ class MapParameters(object):
         elif event.key == pygame.K_DOWN and self.lat > -85:
             self.lat -= self.step * math.pow(2, 15 - self.zoom)
 
+    def change_type(self, new_type):  # Смена типа карты (домашняя работа, задача 1)
+        self.type = new_type
+
 
 # Создание карты
 def load_map(map_pars):
@@ -64,16 +69,24 @@ def load_map(map_pars):
 
 def main():
     pygame.init()
-    size = 600, 450
+    size = width, height = 600, 450
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption('Maps-API-task')
 
     # Инициализация параматров карты
     map_pars = MapParameters()
+    manager = pygame_gui.UIManager(size)
+    # Создание выпадающего списка
+    type_map = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
+        options_list=['map', 'sat', 'sat,skl'], starting_option='map',
+        relative_rect=pygame.rect.Rect((width - 100, 0), (100, 30)), manager=manager
+    )
 
+    clock = pygame.time.Clock()
     running = True
 
     while running:
+        time_delta = clock.tick(60) / 1000.0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -81,11 +94,24 @@ def main():
             elif event.type == pygame.KEYUP:  # Если была нажата какая-либо клавиша, она обрабатывается методом класса
                 map_pars.process_key(event)
 
+            elif event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+                    # Если выбран пункт из выпадающего списка, меняем тип на этот пункт
+                    if event.ui_element == type_map:
+                        map_pars.change_type(event.text)
+
+            # Передавание события в менеджер
+            manager.process_events(event)
+
         # Создание файла с картой
         map_file = load_map(map_pars)
 
+        # Обновление менеджера
+        manager.update(time_delta)
         # Отрисовка картинки
         screen.blit(pygame.image.load(map_file), (0, 0))
+        # Отрисовка менеджера
+        manager.draw_ui(screen)
         pygame.display.flip()
 
     pygame.quit()

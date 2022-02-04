@@ -14,6 +14,8 @@ class MapParameters(object):
         self.zoom = 15  # Масштаб (изменяется в пределах от 1 до 19)
         self.type = "map"  # Тип карты
         self.step = 0.005  # Шаг смещения карты
+        self.coord_current_pt = ''  # Текущая метка (домашняя работа, задача 2)
+        self.pt = []  # Ранее сохраненные метки (домашняя работа, задача 3)
 
     def get_ll(self):  # Функция возвращает координаты в правильном формате
         return str(self.lon) + "," + str(self.lat)
@@ -39,8 +41,19 @@ class MapParameters(object):
         elif event.key == pygame.K_DOWN and self.lat > -85:
             self.lat -= self.step * math.pow(2, 15 - self.zoom)
 
+        if self.coord_current_pt:  # Если уже существует метка
+            # Сохраняем текущую метку
+            self.pt.append(self.coord_current_pt)
+            # Удаление данных о текущей метке из переменной, т.к. мы уже сохранили это в список
+            self.coord_current_pt = ''
+
     def change_type(self, new_type):  # Смена типа карты (домашняя работа, задача 1)
         self.type = new_type
+        if self.coord_current_pt:  # Если уже существует метка
+            # Сохраняем текущую метку
+            self.pt.append(self.coord_current_pt)
+            # Удаление данных о текущей метке из переменной, т.к. мы уже сохранили это в список
+            self.coord_current_pt = ''
 
     def change_location(self, new_location):  # Смена места (домашняя работа, задача 2)
         # Ищем место, заданное в текстовом поле
@@ -60,15 +73,28 @@ class MapParameters(object):
                 # Меняем долготу и широту.
                 self.lon = float(toponym_coordinates[0])
                 self.lat = float(toponym_coordinates[1])
+                # Устанавливаем текущаю метку.
+                self.coord_current_pt = ','.join([str(self.lon), str(self.lat)])
             else:
                 print("Не удалась найти такое место :(")
         else:
             print("Вы не набрали запрос")
 
+    def get_pt(self):  # Функция возращает все метки в правильном формате
+        saved_pt = '~'.join(self.pt)
+        if self.coord_current_pt and saved_pt:
+            return f'{self.coord_current_pt}~{saved_pt}'
+        elif self.coord_current_pt:
+            return self.coord_current_pt
+        elif saved_pt:
+            return saved_pt
+        return ''
+
 
 # Создание карты
 def load_map(map_pars):
-    map_request = f"http://static-maps.yandex.ru/1.x/?ll={map_pars.get_ll()}&z={map_pars.zoom}&l={map_pars.type}"
+    map_request = f"http://static-maps.yandex.ru/1.x/?ll={map_pars.get_ll()}&z={map_pars.zoom}&l={map_pars.type}" \
+                  f"&pt={map_pars.get_pt()}"
     response = requests.get(map_request)
 
     if not response:

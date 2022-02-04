@@ -42,6 +42,29 @@ class MapParameters(object):
     def change_type(self, new_type):  # Смена типа карты (домашняя работа, задача 1)
         self.type = new_type
 
+    def change_location(self, new_location):  # Смена места (домашняя работа, задача 2)
+        # Ищем место, заданное в текстовом поле
+        geocoder_request = f"http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b" \
+                           f"&geocode={new_location}&format=json"
+        response = requests.get(geocoder_request)
+        if response:  # Если запрос не пустой:
+            # Преобразуем ответ в json-объект
+            json_response = response.json()
+
+            # Если мы можем найти однозначный ответ на запрос:
+            if json_response["response"]["GeoObjectCollection"]["featureMember"]:
+                toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+                # Координаты центра топонима:
+                toponym_coordinates = toponym["Point"]["pos"].split()
+
+                # Меняем долготу и широту.
+                self.lon = float(toponym_coordinates[0])
+                self.lat = float(toponym_coordinates[1])
+            else:
+                print("Не удалась найти такое место :(")
+        else:
+            print("Вы не набрали запрос")
+
 
 # Создание карты
 def load_map(map_pars):
@@ -81,6 +104,10 @@ def main():
         options_list=['map', 'sat', 'sat,skl'], starting_option='map',
         relative_rect=pygame.rect.Rect((width - 100, 0), (100, 30)), manager=manager
     )
+    # Создание текстого поля
+    text_line = pygame_gui.elements.UITextEntryLine(
+        relative_rect=pygame.rect.Rect((0, 0), (350, 30)), manager=manager
+    )
 
     clock = pygame.time.Clock()
     running = True
@@ -99,6 +126,11 @@ def main():
                     # Если выбран пункт из выпадающего списка, меняем тип на этот пункт
                     if event.ui_element == type_map:
                         map_pars.change_type(event.text)
+
+                elif event.user_type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
+                    # Если завершили набор текста (нажали Enter), то ищем это название и меняем локацию
+                    if event.ui_element == text_line:
+                        map_pars.change_location(event.text)
 
             # Передавание события в менеджер
             manager.process_events(event)
